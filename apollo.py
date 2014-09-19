@@ -1,7 +1,7 @@
 import serial
 import math
 
-ser = serial.Serial('/dev/rfcomm0', 9600, timeout=10)
+ser = serial.Serial('/dev/ttyUSB0', 38400, timeout=10)
 
 pBuffer = [None for x in range(100)]
 aBuffer = [None for x in range(100)]
@@ -38,14 +38,14 @@ A = math.pi * Ar ** 2 # rocket area
 P0 = 101352.932
 g = 9.8 # m/s^2
 
-def calcDistance(PsPsi, O, rocket):
+def calcDistance(PsPsi, Or, rocket):
     Ps = psiToKilopascal(PsPsi)
     L = rocketsL[rocket]
     m = rocketsW[rocket]
+    O = Or * 360 / (2 * math.pi)
     v0 = math.sqrt(2 * L * ((Ps - P0)*A /m - g ))
-    print 'Ps',Ps, 'L',L,'m',m,'v0',v0, 'A',A
     R = 2 * L * math.sin(O) * (((Ps - P0) * A)/(m * g) -1)
-    print 'R', R
+    return R
 
 
 def nextBufferPos(name) :
@@ -66,9 +66,10 @@ while True:
         aBuffer[nextBufferPos('A')] = calcPoly(float(args[1:]))
         print aBuffer[curBufferPos('A')]
     elif action == 'P':
+        print aBuffer[curBufferPos('A')], float(args[1:]), calcDistance(float(args[1:]), 45,'w')
         pBuffer[nextBufferPos('P')] = calcDistance(float(args[1:]), 45,'w')
+    
     print pBuffer
-
 
 
 
