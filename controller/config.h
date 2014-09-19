@@ -1,0 +1,16 @@
+#define PSI_REPORTS_PER_SECOND 30
+
+// PINS
+#define PRESSURE_METER_PIN 2
+#define ANEMOMETER_PIN     3
+#define RELEASE_PIN        8
+
+#define PITCH_MOTOR_DIR    2
+#define PITCH_MOTOR_STEP   3
+
+// Etc
+#define STEPPER_MICROS 30
+
+#define SERIAL_RATE    9600
+
+#define PITCH_MOTOR_STEPS_PER_ANGLE 4000.0/90.0
