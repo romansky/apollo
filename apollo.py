@@ -4,7 +4,7 @@ from flask import Flask, jsonify, request
 import threading
 
 
-ser = serial.Serial('/dev/ttyACM1', 38400, timeout=10)
+ser = serial.Serial('/dev/ttyACM0', 38400, timeout=10)
 
 pBuffer = [None for x in range(1000)]
 aBuffer = [None for x in range(1000)]
@@ -85,14 +85,19 @@ def find_best_angle(pressure, distance, rocketType):
 
 def loop_on_serial():
     while True:
-        line = ser.readline()
-        read_from_serial(line)
+        try:
+            line = ser.readline()
+            read_from_serial(line)
+        except:
+            pass
 
 def update_angle():
     global aim_distance
     global rocket_type
     global angle
-    angle = find_best_angle(pBuffer[curBufferPos('P')],aim_distance,rocket_type)
+    found_angle = find_best_angle(pBuffer[curBufferPos('P')],aim_distance,rocket_type)
+    if found_angle:
+        angle = found_angle
 
 def read_from_serial(line):
     global aim_distance
@@ -140,10 +145,11 @@ def data():
     global aim_distance
     global rocket_type
     global angle
+
     return jsonify(
         pBuffer = pBuffer, 
         aBuffer = aBuffer, 
-        cur_p_index = curBufferPos('P'), 
+        cur_p_index = curBufferPos('P'),
         cur_a_index = curBufferPos('A'),
         angle = angle,
         is_enough_pressure = (aim_distance <= calcDistance(pBuffer[curBufferPos('P')], 45,rocket_type)),
