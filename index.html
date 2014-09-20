@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <head>
-<link href="http://getbootstrap.com/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-<script src="http://getbootstrap.com/dist/js/bootstrap.min.js"></script>
+<link href="/static/bootstrap.min.css" rel="stylesheet">
+<script src="/static/jquery.min.js"></script>
+<script src="/static/bootstrap.min.js"></script>
 <style type="text/css">
 /*
  * Globals
@@ -183,15 +183,15 @@ body {
           <div class="inner cover">
             <p class="lead">
                 Target Distance:<input type="text" class="target_distance" style="color:black;"></input>
-                <a href="#" class="btn btn-default">set</a>
+                <a href="#" class="btn btn-default target_distance__button">set</a>
             </p>
-            <p class="lead">Current wind: <span class="cur_wind"></span></p>
-            <p class="lead">Current PSI: <span class="cur_psi"></span></p>
-            <p class="lead">Current angle: <span class="cur_angle"></span></p>
-            <p class="lead">Current distance: <span class="cur_distance"></span></p>
+            <p class="lead">wind: <span class="cur_wind"></span></p>
+            <p class="lead">PSI: <span class="cur_psi"></span></p>
+            <p class="lead">angle: <span class="cur_angle"></span></p>
+            <p class="lead">distance (as configured): <span class="cur_distance"></span></p>
             <p class="lead">Need more pressure? <span class="need_more_pressure"></span></p>
             <p class="lead">
-              <a href="#" class="btn btn-lg btn-success disabled">Ready!.. Launch!</a>
+              <a href="#" class="btn btn-lg btn-success disabled launch-button">Ready!.. Launch!</a>
             </p>
           </div>
 
@@ -211,17 +211,35 @@ body {
         $(".cur_psi").text(data.pBuffer[data.cur_p_index]);
         $(".cur_angle").text(data.angle);
         $(".cur_distance").text(data.cur_angle_distance);
-        $(".need_more_pressure").text( data.is_enough_pressure ? "Nope" : "Yes!" )
+        $(".need_more_pressure").text( data.is_enough_pressure ? "Nope" : "Yes!" );
 
+
+        if (data.is_enough_pressure){
+          $(".launch-button").removeClass("disabled");
+        } else {
+          $(".launch-button").addClass("disabled");
+        }
     }
 
     function refreshScreen(){
       jQuery.get("/data", function(data){
           console.log(data);
           refreshInfo(data);
-      })
+          setTimeout(refreshScreen, 1000);
+      });
     }
 
-    refreshScreen()
+    $(".target_distance__button").click(function(){
+      var value = $(".target_distance").val();
+      $.post("/distance",{"set_distance" : value});
+    });
+
+    $(".launch-button").click(function(e){
+      if (!$(".launch-button").hasClass("disabled")){
+        $.post("/launch");
+      }
+    });
+
+    refreshScreen();
     </script>
 </body>
