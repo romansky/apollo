@@ -16,18 +16,38 @@ float currentPitch = 0;
 
 int pitchStepsToDo = 0;
 
+long speedTriggerTimeA = 0;
+long speedTriggerTimeB = 0;
+
+//#define DEBUG_MOTOR
+//#define DEBUG_RELEASE
+//#define DEBUG_SPEED
+
+int motorDelay = 16000;
+
 void setup()
 {
-    Serial.begin(SERIAL_RATE);
+    analogReadResolution(16);
+
+    HWSERIAL.begin(SERIAL_RATE);
 
     pinMode(ANEMOMETER_PIN, INPUT);
     attachInterrupt(ANEMOMETER_PIN, rpmInterrupt, CHANGE);
 
-    digitalWrite(RELEASE_PIN, LOW);
+    pinMode(SPEED_PIN_A, INPUT);
+    pinMode(SPEED_PIN_B, INPUT);
+    attachInterrupt(SPEED_PIN_A, speedPinAInterrupt, RISING);
+    attachInterrupt(SPEED_PIN_A, speedPinAInterrupt, FALLING);
+    attachInterrupt(SPEED_PIN_B, speedPinBInterrupt, RISING);
 
+    pinMode(RELEASE_PIN, OUTPUT);
+    digitalWrite(RELEASE_PIN, HIGH);
+
+    pinMode(PITCH_MOTOR_DIR, OUTPUT);
+    pinMode(PITCH_MOTOR_STEP, OUTPUT);
     digitalWrite(PITCH_MOTOR_STEP, LOW);
 
-    Wire.begin();
+    //Wire.begin();
 }
 
  void loop()
@@ -41,13 +61,19 @@ void setup()
         digitalWrite(PITCH_MOTOR_STEP, pitchStepsToDo % 2 == 0 ? LOW : HIGH);
 
         pitchStepsToDo += dir;
-        currentPitch += 1.0/PITCH_MOTOR_STEPS_PER_ANGLE/2.0 * dir;
+#ifdef DEBUG_MOTOR
+        HWSERIAL.print(pitchStepsToDo < 0 ? ".\n" : "+\n");
+#endif
+        //currentPitch += (1.0/PITCH_MOTOR_STEPS_PER_ANGLE)/2.0 * dir;
     }
 
-    if (releaseStop > 0 && millis() < releaseStop)
+    if (releaseStop > 0 && millis() > releaseStop)
     {
         releaseStop = -1;
         digitalWrite(RELEASE_PIN, HIGH);
+#ifdef DEBUG_RELEASE
+        HWSERIAL.println("Release done.");
+#endif
     }
 
     if (anemometerReportElapsed > MILLIS_IN_SEC) //Uptade every one second, this will be equal to reading frecuency (Hz).
@@ -57,37 +83,55 @@ void setup()
         interruptsCount = 0;
         anemometerReportElapsed = 0;
         sei();
-        Serial.print('A');
-        Serial.print(inter);
-        Serial.print('\n');
+        HWSERIAL.print('A');
+        HWSERIAL.print(inter);
+        HWSERIAL.print('\n');
+    }
+
+    if (speedTriggerTimeB > 0)
+    {
+        cli();
+        float speed = SPEED_DISTANCE / ((speedTriggerTimeB - speedTriggerTimeA) / 1000000.0);
+        speedTriggerTimeA = 0;
+        speedTriggerTimeB = 0;
+        sei();
+        HWSERIAL.print('S');
+        HWSERIAL.print(speed);
+        HWSERIAL.print('\n');
     }
 
 
     if (psiReportElapsed > (MILLIS_IN_SEC / PSI_REPORTS_PER_SECOND))
     {
 
-        float psi = psiDigital();
+        float psi = psiAnalog();
         psiReportElapsed = 0;
-        Serial.print('P');
-        Serial.print(psi);
-        Serial.print('\n');
+        HWSERIAL.print('P');
+        HWSERIAL.print(psi);
+        HWSERIAL.print('\n');
     }
 
-    if (Serial.available() > 0)
+    if (HWSERIAL.available() > 0)
     {
-        int cmd = Serial.read();
+        int cmd = HWSERIAL.read();
         switch (cmd) {
             case 'R': // Relase pressure for X milliseconds.
             {
                 int time = readInt();
                 releaseStop = millis() + time;
                 digitalWrite(RELEASE_PIN, LOW);
+#ifdef DEBUG_RELEASE
+                HWSERIAL.print("Initing release for ");
+                HWSERIAL.print(time);
+                HWSERIAL.println("ms.");
+#endif
             }
             break;
             case 'C': // Calibrate current rig pitch
             {
                 currentPitch = readFloat();
             }
+            break;
             case 'S': // Set new rig pitch
             {
                 float pitch = readFloat();
@@ -97,15 +141,63 @@ void setup()
                 int steps = diff*PITCH_MOTOR_STEPS_PER_ANGLE*2; // We double the steps since we need to output an edge for each step.
 
                 pitchStepsToDo += steps;
+                currentPitch = pitch;
+#ifdef DEBUG_MOTOR
+                HWSERIAL.print("Initing pitch: ");
+                HWSERIAL.print(currentPitch);
+                HWSERIAL.print(". Starting movment to ");
+                HWSERIAL.print(pitch);
+                HWSERIAL.print(" gonna do ");
+                HWSERIAL.print(steps/2);
+                HWSERIAL.println(" steps");
+#endif
+            }
+            break;
+            case 'D':
+            {
+                motorDelay = readInt();
             }
             break;
         }
     }
+
+// We only need to delay if we don't use debug(which slows down the whole loop)
+#ifndef DEBUG_MOTOR
+    delayMicroseconds(motorDelay);
+#endif
 }
 
 void rpmInterrupt()
 {
     ++interruptsCount;
+}
+
+void speedPinAInterrupt()
+{
+    HWSERIAL.println("AH");
+    // Only read once.
+    if (speedTriggerTimeA == 0)
+    {
+        speedTriggerTimeA = micros();
+    }
+}
+
+void speedPinAInterruptFalling()
+{
+    HWSERIAL.println("AL");
+}
+
+
+void speedPinBInterrupt()
+{
+#ifdef DEBUG_SPEED
+    HWSERIAL.println("SPEED B");
+#endif
+    // Only read if A is available and only read once.
+    if (speedTriggerTimeA > 0 && speedTriggerTimeB == 0)
+    {
+        speedTriggerTimeB = micros();
+    }
 }
 
 float psiDigital()
@@ -129,7 +221,7 @@ float psiAnalog()
 {
     int raw = analogRead(PRESSURE_METER_PIN);
 
-    float voltage = 3.3 * raw/4095;           //voltage present
+    float voltage = 3.3 * raw/(65536-1);           //voltage present
     float percent = 100.0 * voltage/3.3;      //percetange of total voltage
 
     // handle out of scope range
@@ -150,8 +242,8 @@ float fmap(float x, float in_min, float in_max, float out_min, float out_max)
 
 int readInt()
 {
-    char str[5];
-    int len = Serial.readBytesUntil('\n', str, 5);
+    char str[10];
+    int len = HWSERIAL.readBytesUntil('\n', str, 10);
     int num;
     str[len] = '\0';
     sscanf(str, "%d", &num);
@@ -162,7 +254,7 @@ int readInt()
 int readFloat()
 {
     char str[16];
-    int len = Serial.readBytesUntil('\n', str, 16);
+    int len = HWSERIAL.readBytesUntil('\n', str, 16);
     float num;
     str[len] = '\0';
     sscanf(str, "%f", &num);

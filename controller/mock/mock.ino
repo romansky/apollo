@@ -1,4 +1,3 @@
-#include <Serial.h>
 #include <elapsedMillis.h>
 
 #include "config.h"
@@ -10,7 +9,7 @@ elapsedMillis anemometerReportElapsed;
 
 void setup()
 {
-    Serial.begin(SERIAL_RATE);
+    HWSERIAL.begin(SERIAL_RATE);
 }
 
 void loop()
@@ -18,22 +17,22 @@ void loop()
     if (anemometerReportElapsed > MILLIS_IN_SEC) //Uptade every one second, this will be equal to reading frecuency (Hz).
     {
         anemometerReportElapsed = 0;
-        Serial.print('A');
-        Serial.print(20);
-        Serial.print('\n');
+        HWSERIAL.print('A');
+        HWSERIAL.print(20);
+        HWSERIAL.print('\n');
     }
 
 
     if (psiReportElapsed > (MILLIS_IN_SEC / PSI_REPORTS_PER_SECOND))
     {
         psiReportElapsed = 0;
-        Serial.print('P');
-        Serial.print(22.5);
-        Serial.print('\n');
+        HWSERIAL.print('P');
+        HWSERIAL.print(22.5);
+        HWSERIAL.print('\n');
     }
 
-    if (Serial.available() > 0) {
-        int cmd = Serial.read();
+    if (HWSERIAL.available() > 0) {
+        int cmd = HWSERIAL.read();
         switch (cmd) {
             case 'R': // Relase pressure for X milliseconds.
             {
@@ -55,5 +54,5 @@ void loop()
 
 void readMock()
 {
-    while(Serial.available() > 0 && Serial.read() != '\n');
+    while(HWSERIAL.available() > 0 && HWSERIAL.read() != '\n');
 }
