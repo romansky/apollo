@@ -1,5 +1,9 @@
 import serial
 import math
+from flask import Flask
+import threading
+from flask import jsonify
+
 
 ser = serial.Serial('/dev/ttyUSB0', 38400, timeout=10)
 
@@ -37,6 +41,8 @@ Ar = 0.011 # rocket radius
 A = math.pi * Ar ** 2 # rocket area
 P0 = 101352.932
 g = 9.8 # m/s^2
+angle = 45
+aim_distance = 200
 
 def calcDistance(PsPsi, Or, rocket):
     Ps = psiToKilopascal(PsPsi)
@@ -58,18 +64,45 @@ def nextBufferPos(name) :
 def curBufferPos(name):
     return bufferIdx[name]
 
-while True:
-    line = ser.readline()
-    args = line.replace("\n","")
-    action = args[0][0] 
-    if action == 'A':
-        aBuffer[nextBufferPos('A')] = calcPoly(float(args[1:]))
-        print aBuffer[curBufferPos('A')]
-    elif action == 'P':
-        print aBuffer[curBufferPos('A')], float(args[1:]), calcDistance(float(args[1:]), 45,'w')
-        pBuffer[nextBufferPos('P')] = calcDistance(float(args[1:]), 45,'w')
-    
-    print pBuffer
+
+
+def read_from_serial():
+    while True:
+        line = ser.readline()
+        args = line.replace("\n","")
+        action = args[0][0] 
+        if action == 'A':
+            aBuffer[nextBufferPos('A')] = float(args[1:])
+        elif action == 'P':
+            pBuffer[nextBufferPos('P')] = float(args[1:])
+
+thread = threading.Thread(target=read_from_serial, args=())
+thread.start()
+
+app = Flask(__name__)
+
+@app.route("/")
+def index():
+    with open ("index.html", "r") as myfile:
+        return myfile.read().replace('\n', '')
+
+
+@app.route("/data")
+def data():
+
+    return jsonify(
+        pBuffer = pBuffer, 
+        aBuffer = aBuffer, 
+        cur_p_index = curBufferPos('P'), 
+        cur_a_index = curBufferPos('A'),
+        angle = angle,
+        is_enough_pressure = aim_distance <= calcDistance(pBuffer[curBufferPos('P')], 45,'w'),
+        cur_angle_distance = calcDistance(pBuffer[curBufferPos('P')], angle,'w'),
+        cur_wind = calcPoly(aBuffer[curBufferPos('A')])
+    )
+
+if __name__ == "__main__":
+    app.run()
 
 
 
