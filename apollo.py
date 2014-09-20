@@ -4,7 +4,7 @@ from flask import Flask, jsonify, request
 import threading
 
 
-ser = serial.Serial('/dev/ttyACM0', 38400, timeout=10)
+ser = serial.Serial('/dev/ttyUSB0', 38400, timeout=10)
 
 pBuffer = [None for x in range(1000)]
 aBuffer = [None for x in range(1000)]
@@ -65,7 +65,7 @@ def nextBufferPos(name) :
 def curBufferPos(name):
     return bufferIdx[name]
 
-
+last_angle = 0
 
 def find_best_angle(pressure, distance, rocketType):
     if distance >= calcDistance(pressure, 45,rocketType):
@@ -98,6 +98,10 @@ def update_angle():
     found_angle = find_best_angle(pBuffer[curBufferPos('P')],aim_distance,rocket_type)
     if found_angle:
         angle = found_angle
+        if 360 * 0.05 < abs(last_angle - angle):
+            print "setting %", angle
+            last_angle = angle
+            ser.writelines(["S" + str(angle) ])
 
 def read_from_serial(line):
     global aim_distance
@@ -114,6 +118,7 @@ def read_from_serial(line):
 
 
 
+ser.writelines(["C90"])
 thread = threading.Thread(target=loop_on_serial, args=())
 thread.start()
 
@@ -137,7 +142,7 @@ def set_distance():
 def launch():
     global aim_distance
     if request.method == 'POST':
-        print "launching!"
+        ser.writelines(["R2000"])
     return "ok"
 
 @app.route("/data")
