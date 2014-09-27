@@ -1,0 +1,11 @@
+D:\Documents\GitHub\apollo\CSharp\Apollo\Apollo\bin\Release\Apollo.exe.config
+D:\Documents\GitHub\apollo\CSharp\Apollo\Apollo\bin\Release\Apollo.exe
+D:\Documents\GitHub\apollo\CSharp\Apollo\Apollo\bin\Release\Apollo.pdb
+D:\Documents\GitHub\apollo\CSharp\Apollo\Apollo\bin\Release\Newtonsoft.Json.dll
+D:\Documents\GitHub\apollo\CSharp\Apollo\Apollo\bin\Release\Newtonsoft.Json.xml
+D:\Documents\GitHub\apollo\CSharp\Apollo\Apollo\obj\Release\Apollo.csprojResolveAssemblyReference.cache
+D:\Documents\GitHub\apollo\CSharp\Apollo\Apollo\obj\Release\Apollo.frmMain.resources
+D:\Documents\GitHub\apollo\CSharp\Apollo\Apollo\obj\Release\Apollo.Properties.Resources.resources
+D:\Documents\GitHub\apollo\CSharp\Apollo\Apollo\obj\Release\Apollo.csproj.GenerateResource.Cache
+D:\Documents\GitHub\apollo\CSharp\Apollo\Apollo\obj\Release\Apollo.exe
+D:\Documents\GitHub\apollo\CSharp\Apollo\Apollo\obj\Release\Apollo.pdb
